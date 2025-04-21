@@ -11,15 +11,15 @@ You will need a Google API key with the following APIs enabled:
 Then use the API key to run the TSP on the csv file:
 
 ```bash
-cargo run -- --csv maps/example.csv --api-key <your-api-key> --start "Panda Noodle Bar" --end "Arches National Park Visitor Center"
+cargo run --release -- --csv maps/example.csv --api-key <your-api-key> --start "Panda Noodle Bar" --end "Arches National Park Visitor Center"
 ```
 
 You can use `--mode distance` to calculate the TSP on distance values. The default (`--mode time`) minimizes time.
 
 You can also specify the algorithm to be used via the `--algorithm` flag. The default is `held-karp`. You have the following options:
 
-- Held Karp: time: $O(n^2 2^n)$, space: $O(2^n)$
-- Brute Force: time $O(n!)$, space: $O(n^2)$
+- Held Karp (`held-karp`): time: $O(n^2 2^n)$, space: $O(2^n)$
+- Brute Force (`brute-force`): time $O(n!)$, space: $O(n^2)$, parallelized
 
 Note that the number of API requests scales quadratically with the number of nodes in the csv!
 

@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use rayon::prelude::*;
 
 pub fn brute_force(
     n: usize,
@@ -6,46 +7,54 @@ pub fn brute_force(
     end: usize,
     dist: &Vec<Vec<i64>>,
 ) -> Result<Vec<usize>, Box<dyn std::error::Error>> {
-    let intermediate_nodes: Vec<usize> = match start == end {
-        true => (0..n).filter(|&i| i != start).collect(),
-        false => (0..n).filter(|&i| i != start && i != end).collect(),
-    };
+    let intermediate_nodes: Vec<usize> = (0..n).filter(|&i| i != start).collect();
+    let best = intermediate_nodes
+        .clone()
+        .par_iter()
+        .map(|&first_intermediate_node| {
+            let mut thread_min_dist: i64 = i64::MAX;
+            let mut thread_best_path: Option<Vec<usize>> = None;
 
-    let mut min_dist: i64 = i64::MAX;
-    let mut best_path: Option<Vec<usize>> = None;
+            let remaining_nodes: Vec<usize> = intermediate_nodes
+                .iter()
+                .copied()
+                .filter(|&node| node != first_intermediate_node)
+                .collect();
 
-    for permutation in intermediate_nodes
-        .iter()
-        .permutations(intermediate_nodes.len())
-    {
-        let mut current_path: Vec<usize> = vec![start];
-        current_path.extend(permutation.into_iter().copied());
-        current_path.push(end);
+            for permutation in remaining_nodes.iter().permutations(remaining_nodes.len()) {
+                let mut current_path: Vec<usize> = vec![start, first_intermediate_node];
+                current_path.extend(permutation.into_iter().copied());
+                current_path.push(end);
 
-        let mut current_dist: i64 = 0;
-        let mut possible_path = true;
-        for i in 0..n - 1 {
-            let u = current_path[i];
-            let v = current_path[i + 1];
-            let d = dist[u][v];
+                let mut current_dist: i64 = 0;
+                let mut possible_path = true;
 
-            if current_dist > i64::MAX - d {
-                possible_path = false;
-                break;
+                for i in 0..current_path.len() - 1 {
+                    let u = current_path[i];
+                    let v = current_path[i + 1];
+                    let d = dist[u][v];
+                    if current_dist > i64::MAX - d || d == i64::MAX {
+                        current_dist = i64::MAX;
+                        possible_path = false;
+                        break;
+                    }
+
+                    current_dist += d;
+                }
+
+                if possible_path && current_dist < thread_min_dist {
+                    thread_min_dist = current_dist;
+                    thread_best_path = Some(current_path);
+                }
             }
 
-            current_dist += d;
-        }
+            (thread_min_dist, thread_best_path)
+        })
+        .min_by_key(|(dist, _)| *dist);
 
-        if possible_path && current_dist < min_dist {
-            min_dist = current_dist;
-            best_path = Some(current_path);
-        }
-    }
-
-    match best_path {
-        Some(path) => Ok(path),
-        None => Err("No valid path found visiting all nodes with finite distance".into()),
+    match best {
+        Some((min_dist, Some(path))) if min_dist != i64::MAX => Ok(path),
+        _ => Err("No valid path found visiting all nodes with finite distance".into()),
     }
 }
 
