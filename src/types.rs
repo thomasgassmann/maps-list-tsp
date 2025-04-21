@@ -1,3 +1,5 @@
+use std::fmt;
+
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -25,6 +27,16 @@ pub struct Args {
 #[derive(clap::ValueEnum, Debug, Clone)]
 pub enum Algorithm {
     HeldKarp,
+    BruteForce,
+}
+
+impl fmt::Display for Algorithm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Algorithm::HeldKarp => write!(f, "held-karp"),
+            Algorithm::BruteForce => write!(f, "brute-force"),
+        }
+    }
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]

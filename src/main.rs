@@ -32,23 +32,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let waypoints = get_waypoints(&entries, &args.api_key).await?;
 
     let dist = get_distance_matrix(&waypoints, &args.api_key, &args.mode).await?;
+    let mut has_unreachable = false;
     for i in 0..waypoints.len() {
-        if dist[i].iter().all(|&d| d == i64::MAX || d == 0) {
-            return Err(format!(
-                "Waypoint unreachable from any other point: {}",
+        if dist[i]
+            .iter()
+            .enumerate()
+            .all(|(j, &d)| d == i64::MAX || i == j)
+        {
+            println!(
+                "Unreachable from any other point: {}",
                 idx_to_title.get(&i).unwrap()
-            )
-            .into());
+            );
+            has_unreachable = true;
         }
     }
 
-    let path = tsp::held_karp(&waypoints, start, end, &dist)?;
+    if has_unreachable {
+        return Err(format!("Terminating due to unreachable points").into());
+    }
+
+    print!("Running algorithm: {}\n", args.algorithm);
+    let path = match args.algorithm {
+        types::Algorithm::HeldKarp => tsp::held_karp(waypoints.len(), start, end, &dist)?,
+        types::Algorithm::BruteForce => tsp::brute_force(waypoints.len(), start, end, &dist)?,
+    };
     let unit_name: &str = match args.mode {
         Mode::Distance => "meters",
         Mode::Time => "minutes",
     };
 
-    println!("Optimal Path:");
+    println!("\nOptimal Path:");
     println!("-------------");
 
     for (i, &node) in path.iter().enumerate() {

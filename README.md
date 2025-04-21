@@ -19,6 +19,9 @@ You can use `--mode distance` to calculate the TSP on distance values. The defau
 You can also specify the algorithm to be used via the `--algorithm` flag. The default is `held-karp`. You have the following options:
 
 - Held Karp: time: $O(n^2 2^n)$, space: $O(2^n)$
+- Brute Force: time $O(n!)$, space: $O(n^2)$
+
+Note that the number of API requests scales quadratically with the number of nodes in the csv!
 
 ## Getting a csv file or your list
 
