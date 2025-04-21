@@ -1,4 +1,5 @@
 mod parse;
+mod tsp;
 mod types;
 
 use clap::Parser;
@@ -41,72 +42,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    let n = waypoints.len();
-    let full_mask = (1 << n) - 1;
-    let mut dp = vec![vec![i64::MAX; 1 << n]; n];
-    let mut parent = vec![vec![usize::MAX; 1 << n]; n];
-
-    dp[start][1 << start] = 0;
-    for mask in 0..=full_mask {
-        for u in 0..n {
-            let c = dp[u][mask];
-            if c == i64::MAX {
-                continue;
-            }
-
-            for v in 0..n {
-                if mask & (1 << v) == 0 {
-                    let nxt = mask | (1 << v);
-
-                    if dist[u][v] == i64::MAX {
-                        continue;
-                    }
-
-                    if let Some(new_cost) = c.checked_add(dist[u][v]) {
-                        if new_cost < dp[v][nxt] {
-                            dp[v][nxt] = new_cost;
-                            parent[v][nxt] = u;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    let best = dp[end][full_mask];
-    if best == i64::MAX {
-        return Err(format!(
-            "No valid path found from \"{}\" to \"{}\"!",
-            args.start, args.end
-        )
-        .into());
-    }
-
+    let path = tsp::held_karp(&waypoints, start, end, &dist)?;
     let unit_name: &str = match args.mode {
         Mode::Distance => "meters",
         Mode::Time => "minutes",
     };
-    println!(
-        "Optimal distance from \"{}\" to \"{}\": {} {}",
-        args.start, args.end, best, unit_name
-    );
 
-    let mut path = Vec::new();
-    let mut current = end;
-    let mut mask = full_mask;
-
-    path.push(current);
-
-    while mask != (1 << start) {
-        let prev = parent[current][mask];
-        path.push(prev);
-        mask &= !(1 << current);
-        current = prev;
-    }
-
-    path.reverse();
-
-    println!("\nOptimal Path:");
+    println!("Optimal Path:");
     println!("-------------");
 
     for (i, &node) in path.iter().enumerate() {
@@ -117,6 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nSegment Distances:");
     println!("------------------");
 
+    let mut total_dist: i64 = 0;
     for i in 0..path.len() - 1 {
         let from = path[i];
         let to = path[i + 1];
@@ -129,7 +72,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "{} -> {}: {} {}",
             from_title, to_title, segment_dist, unit_name
         );
+
+        total_dist += segment_dist;
     }
+
+    println!(
+        "\nOptimal distance from \"{}\" to \"{}\": {} {}",
+        idx_to_title.get(&start).unwrap(),
+        idx_to_title.get(&end).unwrap(),
+        total_dist,
+        unit_name
+    );
 
     Ok(())
 }
