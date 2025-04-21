@@ -8,13 +8,17 @@ You will need a Google API key with the following APIs enabled:
 - Geocoding API
 - Distance Matrix API
 
-Then use the API key to run the TSP on $O(n^2 2^n)$ on the csv file:
+Then use the API key to run the TSP on the csv file:
 
 ```bash
 cargo run -- --csv maps/example.csv --api-key <your-api-key> --start "Panda Noodle Bar" --end "Arches National Park Visitor Center"
 ```
 
 You can use `--mode distance` to calculate the TSP on distance values. The default (`--mode time`) minimizes time.
+
+You can also specify the algorithm to be used via the `--algorithm` flag. The default is `held-karp`. You have the following options:
+
+- Held Karp: time: $O(n^2 2^n)$, space: $O(2^n)$
 
 ## Getting a csv file or your list
 

@@ -17,6 +17,14 @@ pub struct Args {
 
     #[arg(long, value_enum, default_value = "time")]
     pub mode: Mode,
+
+    #[arg(long, value_enum, default_value = "held-karp")]
+    pub algorithm: Algorithm,
+}
+
+#[derive(clap::ValueEnum, Debug, Clone)]
+pub enum Algorithm {
+    HeldKarp,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
