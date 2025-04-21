@@ -98,7 +98,7 @@ async fn get_distance_matrix(waypoints: &Vec<Waypoint>, api_key: &str) -> Result
         let i_end = (i + CHUNK_SIZE).min(n);
         let origins = &waypoints[i..i_end];
         
-        for j in (0..n).step_by(CHUNK_SIZE) {
+        for j in (i..n).step_by(CHUNK_SIZE) {
             let j_end = (j + CHUNK_SIZE).min(n);
             let destinations = &waypoints[j..j_end];
 
@@ -109,19 +109,19 @@ async fn get_distance_matrix(waypoints: &Vec<Waypoint>, api_key: &str) -> Result
                 .await?;
             
             for (chunk_i, row) in dm.rows.into_iter().enumerate() {
-                let global_i = i + chunk_i;
+                let current_i = i + chunk_i;
                 for (chunk_j, elem) in row.elements.into_iter().enumerate() {
-                    let global_j = j + chunk_j;
+                    let current_j = j + chunk_j;
 
                     if let Some(duration) = elem.duration {
-                        dist[global_i][global_j] = duration.value.num_minutes();
+                        let duration_minutes = duration.value.num_minutes();
+                        dist[current_i][current_j] = duration_minutes;
+                        dist[current_j][current_i] = duration_minutes;
                     } else {
-                        warn!("No distance available from {} to {}", global_i, global_j);
+                        warn!("No distance available from {} to {}", current_i, current_j);
                     }
                 }
             }
-            
-            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
         }
     }
 
@@ -207,12 +207,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     path.push(current);
     
     while mask != (1 << start) {
-        let prev = parent[current][mask];
-        if prev == usize::MAX {
-            warn!("Warning: Cannot fully reconstruct path!");
-            break;
-        }
-        
+        let prev = parent[current][mask];        
         path.push(prev);
         mask &= !(1 << current);
         current = prev;
@@ -229,7 +224,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     println!("\nSegment Distances:");
-    println!("-----------------");
+    println!("------------------");
     
     for i in 0..path.len() - 1 {
         let from = path[i];
