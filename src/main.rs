@@ -152,6 +152,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let waypoints = get_waypoints(&entries, &args.api_key).await?;
 
     let dist = get_distance_matrix(&waypoints, &args.api_key).await?;
+    for i in 0..waypoints.len() {
+        if dist[i].iter().all(|&d| d == i64::MAX || d == 0) {
+            return Err(format!("Waypoint unreachable from any other point: {}", idx_to_title.get(&i).unwrap()).into());
+        }
+    }
 
     let n = waypoints.len();
     let full_mask = (1 << n) - 1;
