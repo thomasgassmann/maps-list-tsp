@@ -14,7 +14,10 @@ pub fn brute_force(
     let mut min_dist: i64 = i64::MAX;
     let mut best_path: Option<Vec<usize>> = None;
 
-    for permutation in intermediate_nodes.iter().permutations(intermediate_nodes.len()) {
+    for permutation in intermediate_nodes
+        .iter()
+        .permutations(intermediate_nodes.len())
+    {
         let mut current_path: Vec<usize> = vec![start];
         current_path.extend(permutation.into_iter().copied());
         current_path.push(end);
@@ -42,12 +45,9 @@ pub fn brute_force(
 
     match best_path {
         Some(path) => Ok(path),
-        None => {
-             Err("No valid path found visiting all nodes with finite distance".into())
-        }
+        None => Err("No valid path found visiting all nodes with finite distance".into()),
     }
 }
-
 
 pub fn held_karp(
     n: usize,
