@@ -11,12 +11,14 @@ You will need a Google API key with the following APIs enabled:
 Then use the API key to run the TSP on $O(n^2 2^n)$ on the csv file:
 
 ```bash
-cargo run -- --csv maps/example.csv --api-key <your-api-key> --start "Panda Noodle Bar" --end "Arches National Park Visitor Center" 
+cargo run -- --csv maps/example.csv --api-key <your-api-key> --start "Panda Noodle Bar" --end "Arches National Park Visitor Center"
 ```
+
+You can use `--mode distance` to calculate the TSP on distance values. The default (`--mode time`) minimizes time.
 
 ## Getting a csv file or your list
 
-To get the CSV file of your saved places, you will need to use Google Takeout (selected "Saved").
+To get the CSV file of your saved places, you will need to use Google Takeout (select "Saved").
 
 ## Example output
 
