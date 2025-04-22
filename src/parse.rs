@@ -4,6 +4,8 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::types::{CsvEntry, Mode};
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub async fn get_waypoints(
     entries: &Vec<CsvEntry>,
@@ -24,19 +26,29 @@ pub async fn get_waypoints(
 
             // take the second ftid
             let cid = token.split(':').skip(1).next().unwrap();
+            let cache_file = format!("./cache/place_details_{}.json", cid);
+            let response = if std::path::Path::new(&cache_file).exists() {
+                debug!("Cache hit for {}", cid);
+                let cached_data = std::fs::read_to_string(&cache_file)?;
+                serde_json::from_str::<Value>(&cached_data)?
+            } else {
+                debug!("Cache miss for {}", cid);
+                let details_url = format!(
+                    "https://maps.googleapis.com/maps/api/place/details/json?cid={}&key={}",
+                    cid, api_key
+                );
 
-            let details_url = format!(
-                "https://maps.googleapis.com/maps/api/place/details/json?cid={}&key={}",
-                cid, api_key
-            );
+                let response = maps_client
+                    .reqwest_client
+                    .get(&details_url)
+                    .send()
+                    .await?
+                    .json::<Value>()
+                    .await?;
 
-            let response = maps_client
-                .reqwest_client
-                .get(&details_url)
-                .send()
-                .await?
-                .json::<Value>()
-                .await?;
+                std::fs::write(&cache_file, serde_json::to_string(&response)?)?;
+                response
+            };
 
             let result = response.get("result").expect("result not found");
             let geometry = result.get("geometry").expect("geometry not found");
@@ -62,6 +74,14 @@ pub async fn get_waypoints(
     Ok(waypoints)
 }
 
+fn hash_waypoints(waypoints: &[Waypoint]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    for wp in waypoints {
+        wp.hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
 pub async fn get_distance_matrix(
     waypoints: &Vec<Waypoint>,
     api_key: &str,
@@ -84,14 +104,31 @@ pub async fn get_distance_matrix(
             let j_end = (j + CHUNK_SIZE).min(n);
             let destinations = &waypoints[j..j_end];
 
-            debug!(
-                "Calculating distance matrix: orig: {:?}, dest: {:?}",
-                origins, destinations
+            let cache_key = format!(
+                "./cache/distance_matrix_{:x}_{:x}.json",
+                hash_waypoints(origins),
+                hash_waypoints(destinations)
             );
-            let dm = maps_client
-                .distance_matrix(origins, destinations)
-                .execute()
-                .await?;
+
+            let dm = if std::path::Path::new(&cache_key).exists() {
+                debug!("Cache hit for distance matrix: {}", cache_key);
+                let cached_data = std::fs::read_to_string(&cache_key)?;
+                serde_json::from_str::<google_maps::distance_matrix::response::Response>(
+                    &cached_data,
+                )?
+            } else {
+                debug!(
+                    "Cache miss for distance matrix: orig: {:?}, dest: {:?}",
+                    origins, destinations
+                );
+                let dm: DistanceMatrixResponse = maps_client
+                    .distance_matrix(origins, destinations)
+                    .execute()
+                    .await?;
+
+                std::fs::write(&cache_key, serde_json::to_string(&dm)?)?;
+                dm
+            };
 
             for (chunk_i, row) in dm.rows.into_iter().enumerate() {
                 let current_i = i + chunk_i;
